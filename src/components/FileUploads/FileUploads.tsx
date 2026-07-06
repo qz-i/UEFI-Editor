@@ -49,39 +49,55 @@ export default function FileUploads({
       files.setupdataBinContainer.file &&
       !files.setupdataBinContainer.isWrongFile
     ) {
-      if (
-        Object.values(files).every(
-          (fileContainer: FileContainer) => !fileContainer.textContent
-        )
-      ) {
-        void Promise.all([
-          files.setupTxtContainer.file.text(),
-          ...[
-            files.setupSctContainer.file,
-            files.amitseSctContainer.file,
-            files.setupdataBinContainer.file,
-          ].map((file) => {
-            return new Promise<string>((resolve) => {
-              const worker = hexWorker();
-              worker.onmessage = (e: MessageEvent<string>) => {
-                resolve(e.data);
-              };
-              worker.postMessage(file);
-            });
-          }),
-        ]).then((values) => {
-          setFiles((draft) => {
-            draft.setupTxtContainer.textContent = values[0];
-            draft.setupSctContainer.textContent = values[1];
-            draft.amitseSctContainer.textContent = values[2];
-            draft.setupdataBinContainer.textContent = values[3];
+      void Promise.all([
+        files.setupTxtContainer.file.text(),
+        ...[
+          files.setupSctContainer.file,
+          files.amitseSctContainer.file,
+          files.setupdataBinContainer.file,
+        ].map((file) => {
+          return new Promise<string>((resolve) => {
+            const worker = hexWorker();
+      
+            worker.onmessage = (e: MessageEvent<string>) => {
+              resolve(e.data);
+              worker.terminate();
+            };
+      
+            worker.postMessage(file);
           });
+        }),
+      ]).then((values) => {
+        const populatedFiles: PopulatedFiles = {
+          setupTxtContainer: {
+            ...files.setupTxtContainer,
+            textContent: values[0],
+          },
+          setupSctContainer: {
+            ...files.setupSctContainer,
+            textContent: values[1],
+          },
+          amitseSctContainer: {
+            ...files.amitseSctContainer,
+            textContent: values[2],
+          },
+          setupdataBinContainer: {
+            ...files.setupdataBinContainer,
+            textContent: values[3],
+          },
+        };
+      
+        setFiles((draft) => {
+          draft.setupTxtContainer.textContent = values[0];
+          draft.setupSctContainer.textContent = values[1];
+          draft.amitseSctContainer.textContent = values[2];
+          draft.setupdataBinContainer.textContent = values[3];
         });
-      } else {
-        void parseData(files as PopulatedFiles).then((data) => {
+      
+        void parseData(populatedFiles).then((data) => {
           setData(data);
         });
-      }
+      });
     }
   }, [files, setFiles, setData]);
 
